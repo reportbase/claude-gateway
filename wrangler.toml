@@ -1,0 +1,54 @@
+name = "claude-gateway"
+main = "src/worker.js"
+compatibility_date = "2025-05-01"
+
+# Everything below is policy you can change without touching code.
+# After editing: `npx wrangler deploy`
+[vars]
+
+# WHO may call this Worker. Comma-separated. Forms:
+#   https://app.example.com     exact origin
+#   https://*.example.com       any subdomain (list the apex separately if needed)
+#   null                        pages opened from file:// (see README — unauthenticated)
+#   *                           everything (development only, never ship this)
+ALLOWED_ORIGINS = "https://tangent.fit,https://*.tangent.fit,http://localhost:8077,http://127.0.0.1:8077"
+
+# HOW OFTEN one IP+origin pair may call, per minute. 0 disables the check.
+# Without the RATE_LIMITER binding below this is per-isolate and best-effort.
+RATE_LIMIT_PER_MIN = "60"
+
+# WHICH models may be requested. Empty = allow any model your key can reach.
+# Pinning this is the cheapest protection against a runaway or hijacked client.
+ALLOWED_MODELS = ""
+
+# Hard ceiling on max_tokens. Requests above it are clamped, not rejected.
+# 0 = no cap.
+MAX_TOKENS_CAP = "4096"
+
+# Largest request body accepted, in bytes.
+MAX_BODY_BYTES = "262144"
+
+# WHICH upstream paths are reachable.
+ALLOWED_PATHS = "/v1/messages,/v1/messages/count_tokens,/v1/models"
+
+# Permit callers that send no Origin header at all (curl, servers, native apps).
+# Leave "false" for a browser-only gateway: with it on, the origin allowlist
+# stops protecting you, since a non-browser client simply omits the header.
+ALLOW_NO_ORIGIN = "false"
+
+# ── Accurate rate limiting (recommended) ────────────────────────────────────
+# The in-isolate limiter above counts per Worker isolate, so the real global
+# ceiling is roughly (isolates x limit). Cloudflare's native binding counts
+# across the whole edge and costs nothing. Uncomment, then redeploy.
+#
+# [[unsafe.bindings]]
+# name = "RATE_LIMITER"
+# type = "ratelimit"
+# namespace_id = "1001"          # any number you pick; unique per Worker
+# simple = { limit = 60, period = 60 }   # period must be 10 or 60
+
+# ── Secrets are NOT set here ────────────────────────────────────────────────
+# Never put the API key in this file — it is committed, and [vars] are visible
+# in the dashboard. Set it once, encrypted at rest:
+#
+#   npx wrangler secret put ANTHROPIC_API_KEY
